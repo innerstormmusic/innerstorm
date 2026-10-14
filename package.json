@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.57.0",
+    "music-metadata": "^12.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

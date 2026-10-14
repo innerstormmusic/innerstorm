@@ -1,13 +1,29 @@
-// A downloadable track, as returned by the Worker's /api/tracks endpoint.
+// The R2 bucket's top-level folders. Each one is a section of the site.
+export const SECTIONS = ['tracks', 'mixes', 'calendar'] as const
+export type Section = (typeof SECTIONS)[number]
+
+// One MP3 from the bucket, as returned by the Worker's /api/tracks endpoint. Everything except
+// the key, size and URLs comes from the file's own ID3 tags.
 export interface Track {
+  // The R2 object key, e.g. "tracks/innerstorm - Caveman.mp3"
   id: string
-  artist: string
+  section: Section
   title: string
-  // File size in bytes; null when Drive doesn't report one.
-  size: number | null
-  // ISO timestamp of when the file was added to Drive.
-  added: string
+  artist: string
+  album: string | null
+  genre: string | null
+  year: number | null
+  trackNo: number | null
+  // Seconds; null when it couldn't be worked out.
+  duration: number | null
+  // File size in bytes
+  size: number
+  // Streams the file (supports HTTP Range, so seeking works)
+  audioUrl: string
+  // Same file, served as an attachment
   downloadUrl: string
+  // Embedded cover art, or null when the file has none
+  coverUrl: string | null
 }
 
 export interface TracksResponse {

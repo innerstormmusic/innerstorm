@@ -22,20 +22,32 @@ Website for **innerstorm**, the owner's own music. Its main purpose is to offer 
 - The build uses `@cloudflare/vite-plugin`: output goes to `dist/client` (assets) and `dist/innerstorm`
   (Worker plus a generated `wrangler.json` that `wrangler deploy` picks up automatically).
 
-## Track list (live from Google Drive)
+## Music (R2 bucket, read from the MP3 tags)
 
-- `worker/index.ts` serves `GET /api/tracks`. It lists the MP3s (`audio/mpeg`) in a Drive folder shared as
-  "Anyone with the link", newest first, through the Drive API v3 with an API key.
-- Config: `DRIVE_FOLDER_ID` is a var in `wrangler.jsonc`. `GOOGLE_API_KEY` is a **secret**, set in the
-  Cloudflare dashboard (Worker → Settings → Variables and Secrets), and locally in `.dev.vars`
-  (gitignored, template in `.dev.vars.example`).
-- Caching: Cloudflare edge cache 10 min (`s-maxage`), browser 1 min. A new upload can take up to ~10 min to show.
-- File names follow `artist - track name.mp3`. They're split on the first ` - ` into artist and title.
-- Download links: `https://drive.google.com/uc?export=download&id=<id>`. Drive shows a "can't scan for viruses"
-  page for files over ~100 MB; that's expected. Moving the files to R2 is a possible later step.
-- `shared/track.ts` holds the `Track` type used by both the Worker and the React app.
-- After changing `wrangler.jsonc` vars or secrets, run `npm run cf-typegen` to regenerate
+- The MP3s live in the private R2 bucket `innerstorm-media`, bound to the Worker as `MEDIA` (`wrangler.jsonc`).
+  Its top-level folders are the site's sections: `tracks/`, `mixes/`, `calendar/` (`SECTIONS` in
+  `shared/track.ts`). Files in subfolders belong to their top-level folder; anything else is ignored.
+- There is no playlist JSON. Everything shown comes from the files' **ID3 tags**, read by the Worker with
+  `music-metadata`: title, artist, album, genre, year, track number, embedded cover. Files without a title
+  tag fall back to their name, `artist - title.mp3`. The artist "innerstorm" is always shown lowercase.
+- Order within a section: by track number (`TRCK`); files without one come after, newest year first, then
+  by title.
+- The Worker never downloads whole MP3s for this. `worker/tags.ts` reads the 10-byte ID3 header, then only
+  the tag plus ~16 KB of audio. Length = audio bytes x 8 / bitrate for CBR files; VBR files use the
+  Xing/VBRI header. Parsed tags are cached per file version (R2 etag) in the Cache API, so a file is
+  only parsed again after it's replaced.
+- Endpoints (`worker/index.ts`):
+  - `GET /api/tracks`: the whole list; edge cache 5 min, browser 1 min. A new upload can take up to
+    ~5 min to show.
+  - `GET /api/cover/<key>?v=<etag>`: the embedded cover, cached as immutable.
+  - `GET /media/<key>`: streams the MP3 from R2 with HTTP Range support (seeking); `?download` adds
+    `Content-Disposition: attachment`. Only `*.mp3` keys inside the section folders are served.
+- After changing bindings in `wrangler.jsonc`, run `npm run cf-typegen` to regenerate
   `worker-configuration.d.ts` (committed, because `tsc -b` needs it in the Cloudflare build).
+- Local dev uses Wrangler's local R2 emulation (`.wrangler/state`). Fill it with:
+  `npx wrangler r2 object put "innerstorm-media/tracks/<file>.mp3" --file <path> --local`.
+  `docs/samples/` holds a few real, tagged MP3s for this. Delete `.wrangler/state/v3/cache` to drop
+  cached lists/tags.
 
 ## Stack
 
@@ -57,12 +69,16 @@ npm run cf-typegen  # regenerate worker-configuration.d.ts from wrangler.jsonc /
 ## Layout
 
 - `index.html`: Vite entry (favicons, manifest, Raleway from Google Fonts)
-- `src/App.tsx`: page: logo, tracks panel, social links
-- `src/components/`: `LogoType` (animated wordmark), `TrackList`, `SocialLinks`
+- `src/App.tsx`: the page: full-height sections Home, Tracks, Mixes, Calendar, About (as on the old site)
+- `src/player/`: `PlayerProvider` owns the page's single `<audio>` element (queue, next/previous with
+  wrap-around, auto-advance, volume, Media Session); components use `usePlayer()` from `context.ts`
+- `src/components/`: `Section`, `Playlist` (rows), `CalendarGrid` (cover cards), `Player` (bottom bar,
+  progress bar, no waveform), `TrackCover`, `TracksStatus`, `LogoType` (animated wordmark), `SocialLinks`
+- `src/hooks/useTracks.ts`: loads `/api/tracks` once; sections filter their part
 - `src/index.css`: all styles, with colour tokens on `:root`
-- `src/assets/`: `poly.jpg` background, social icons
+- `src/assets/`: section backgrounds (`backgrounds/`), social icons
 - `public/`: favicons and `site.webmanifest`
-- `worker/`: Cloudflare Worker (API)
+- `worker/`: Cloudflare Worker: `index.ts` (routes, list, covers), `tags.ts` (ID3 reading), `media.ts` (Range streaming)
 - `shared/`: types shared by the app and the Worker
 - `docs/`: **gitignored**, local reference only (e.g. `docs/old site/innerstorm`, the private old site).
   Read-only: never edit anything in it.
@@ -70,14 +86,17 @@ npm run cf-typegen  # regenerate worker-configuration.d.ts from wrangler.jsonc /
 ## Design
 
 Carried over from the old site (`docs/old site/innerstorm`): black base, Raleway, light grey (zinc) text.
-The `poly.jpg` background sits behind a darkening overlay. The page has the ˈɪnəstɔːm outline wordmark, which
-draws in through stroke-dashoffset (`pathLength=1` on each shape), a frosted-glass panel for the list, rows in
-the old playlist style, and glowing social icons. Animations respect `prefers-reduced-motion`.
+Each section sits over its own blurred, darkened background (home: `poly.jpg`, tracks: `tomtom.jpg`, mixes:
+`tom3_1.jpg`, calendar: `innerstorm.jpeg`, about: `magic1.jpg`). The home section has the ˈɪnəstɔːm outline
+wordmark, which draws in through stroke-dashoffset (`pathLength=1` on each shape), and glowing social icons.
+Lists sit in frosted-glass panels with rows in the old playlist style; calendar mixes are cover cards. The
+player is a glass bar fixed to the bottom. Animations respect `prefers-reduced-motion`.
 
 ## Roadmap
 
-1. **Iteration 1 (current):** list the MP3 files with download links, live from a Google Drive folder.
-2. Later iterations: to be defined.
+1. ~~Iteration 1: list MP3s with download links from Google Drive~~ (replaced: Drive can't stream).
+2. **Iteration 2 (current):** MP3s in R2, list built from ID3 tags, streaming player, old-site sections.
+3. Later iterations: to be defined.
 
 ## Repo notes
 
