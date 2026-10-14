@@ -11,7 +11,7 @@
   },
   "vars": {
     // The shared Google Drive folder that holds the MP3s ("Anyone with the link" can view).
-    "DRIVE_FOLDER_ID": ""
+    "DRIVE_FOLDER_ID": "1JdqkbSjILlEAmKfS7Tn0xv0k1gJSokuD"
   }
   // Secret, set in the Cloudflare dashboard (and in .dev.vars locally): GOOGLE_API_KEY
 }

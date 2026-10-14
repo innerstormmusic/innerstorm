@@ -206,7 +206,7 @@ body {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   color: var(--text-muted);
   opacity: 0.75;
 }
@@ -233,7 +233,7 @@ body {
 
 .track-size {
   flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.01em;
 }
 
