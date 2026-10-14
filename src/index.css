@@ -41,22 +41,34 @@ body {
 
 /* PAGE + SECTIONS */
 
+/* Full-screen sections with CSS scroll snapping: a wheel notch, Page Up/Down or an arrow key moves one
+   whole section, and scroll-snap-stop keeps a fast flick from skipping past one. Anchor links
+   (#tracks etc.) jump between sections smoothly. No scroll JavaScript. */
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
+  scroll-snap-type: y mandatory;
 }
 
-.page {
-  /* Room for the player bar once it's open */
-  transition: padding-bottom 0.33s ease-in-out;
+/* On phones the list sections are taller than the screen; strict snapping would fight scrolling
+   through them, so it only pulls when a section edge is close. */
+@media (max-width: 799px), (max-height: 599px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
 }
 
-body:has(.player.is-open) .page {
-  padding-bottom: var(--player-height);
+:root {
+  /* Space kept free under each section while the player bar is open */
+  --player-space: 0px;
+}
+
+body:has(.player.is-open) {
+  --player-space: var(--player-height);
 }
 
 /* One full-height screen, over its own background (as on the old site). */
 .section {
+  --section-pad: clamp(3rem, 8vh, 6rem);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -66,9 +78,11 @@ body:has(.player.is-open) .page {
   align-items: center;
   justify-content: center;
   gap: clamp(2rem, 6vw, 4rem);
-  padding: clamp(3rem, 8vh, 6rem) 1rem;
+  padding: var(--section-pad) 1rem calc(var(--section-pad) + var(--player-space));
   box-sizing: border-box;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
+  transition: padding-bottom 0.33s ease-in-out;
 }
 
 .section::before,
@@ -116,28 +130,34 @@ body:has(.player.is-open) .page {
   box-shadow: inset 0 0 100px 50px rgba(0, 0, 0, 0.33);
 }
 
-.listen-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1.25rem;
-  border: 1px solid var(--row-border);
-  border-radius: 999px;
-  color: var(--text-soft);
-  font-weight: 600;
-  text-decoration: none;
-  opacity: 0;
-  animation: fade-in 1s ease-in forwards;
-  animation-delay: 2.8s;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
+/* The old site's animated mouse at the bottom of the home screen; it slides up after the intro. */
+.scroll-down {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + var(--player-space));
+  line-height: 0;
+  transform: translate(-50%, calc(100% + 2rem));
+  visibility: hidden;
+  animation: come-in 1s ease-in-out 4s forwards;
 }
 
-.listen-link:hover,
-.listen-link:focus-visible {
-  color: var(--text-strong);
-  background-color: var(--row-hover);
+.scroll-down img {
+  width: 60px;
+  height: 60px;
+  filter: invert(0.125);
+}
+
+.scroll-down:focus-visible {
+  outline: 1px solid var(--line-strong);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+
+@keyframes come-in {
+  to {
+    transform: translate(-50%, 0);
+    visibility: visible;
+  }
 }
 
 /* Text on the left, list on the right; stacked on narrow screens. */
@@ -175,22 +195,11 @@ body:has(.player.is-open) .page {
 
   .section-panel {
     flex: 2;
-    max-height: 70vh;
+    /* Fits the screen (minus the player bar); longer lists scroll inside the panel. */
+    max-height: min(70vh, calc(100svh - 2 * var(--section-pad) - var(--player-space)));
     overflow-y: auto;
-  }
-
-  .section-layout-wide {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .section-layout-wide .sidebar {
-    max-width: none;
-  }
-
-  .section-layout-wide .sidebar-text {
-    columns: 3;
-    column-gap: 2.5rem;
+    /* Scrolling past the end of a list doesn't carry on into the page. */
+    overscroll-behavior: contain;
   }
 }
 
@@ -213,7 +222,6 @@ body:has(.player.is-open) .page {
 
 .sidebar-text p {
   margin: 0 0 1rem;
-  break-inside: avoid;
 }
 
 .sidebar-text strong[title] {
@@ -222,6 +230,90 @@ body:has(.player.is-open) .page {
 
 .text-link {
   color: #dc2626;
+}
+
+/* SECTION NAV (dots on the right edge) */
+
+.section-nav {
+  position: fixed;
+  z-index: 50;
+  top: 50%;
+  right: clamp(0.75rem, 1.5vw, 1.5rem);
+  transform: translateY(-50%);
+}
+
+.section-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.section-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* The dot */
+.section-nav-link::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  box-shadow: 0 0 0.25rem rgba(143, 163, 166, 0.5);
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
+}
+
+.section-nav-link:hover::before,
+.section-nav-link:focus-visible::before {
+  background-color: var(--text-soft);
+  transform: scale(1.4);
+}
+
+.section-nav-link[aria-current]::before {
+  background-color: var(--text-strong);
+  transform: scale(1.6);
+}
+
+.section-nav-link:focus-visible {
+  outline: none;
+}
+
+.section-nav-label {
+  position: absolute;
+  right: 100%;
+  padding: 0.125rem 0.5rem;
+  color: var(--text-soft);
+  font-size: 0.875rem;
+  font-weight: 300;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(0.25rem);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.section-nav-link:hover .section-nav-label,
+.section-nav-link:focus-visible .section-nav-label {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 799px) {
+  .section-nav {
+    display: none;
+  }
 }
 
 /* ABOUT */
@@ -384,6 +476,8 @@ body:has(.player.is-open) .page {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
+  overflow: hidden;
   transition:
     filter 0.25s ease,
     transform 0.25s ease;
@@ -394,7 +488,7 @@ body:has(.player.is-open) .page {
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.01);
   color: var(--text-muted);
 }
 
@@ -504,8 +598,9 @@ body:has(.player.is-open) .page {
 
 /* CALENDAR GRID */
 
-.calendar-panel {
-  width: 100%;
+/* The calendar's panel holds glass cards, so it has no glass of its own. */
+.section-panel-bare {
+  padding: 0;
 }
 
 .calendar-grid {
@@ -513,11 +608,25 @@ body:has(.player.is-open) .page {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(150px, 40vw), 1fr));
-  gap: clamp(0.5rem, 1.5vw, 1rem);
+  /* Column counts from the old site: 2 on phones, 4 on tablets, 6 on large screens */
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+}
+
+@media (min-width: 768px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .calendar-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
 }
 
 .calendar-card {
+  container-type: inline-size;
   position: relative;
   display: block;
   width: 100%;
@@ -564,9 +673,10 @@ body:has(.player.is-open) .page {
 
 .calendar-card-title {
   color: var(--text-strong);
-  font-size: clamp(1rem, 1vw + 0.75rem, 1.5rem);
+  /* Sized to the card, so "november" fits a small card too */
+  font-size: clamp(0.75rem, 12cqi, 1.75rem);
   font-weight: 800;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   line-height: 1.2;
 }
 
@@ -595,17 +705,18 @@ body:has(.player.is-open) .page {
   z-index: 100;
   left: 50%;
   bottom: 1.5rem;
-  width: min(85%, 1400px);
+  width: min(66%, 1024px);
   height: 80px;
   box-sizing: border-box;
-  padding: 0 1rem;
+  padding: 0 1rem 0 0.6rem;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto minmax(0, 2.5fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto minmax(0, 2fr) auto;
   grid-template-areas: 'cover info controls progress extra';
   align-items: center;
   column-gap: 1rem;
   transform: translate(-50%, calc(100% + 2rem));
   transition: transform 0.33s ease-in-out;
+  border-radius: 40px;
 }
 
 .player.is-open {
@@ -616,9 +727,90 @@ body:has(.player.is-open) .page {
   grid-area: cover;
   width: 56px;
   height: 56px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
-  border-radius: 0.5rem;
+  border-radius: 50%;
   background-color: rgba(0, 0, 0, 0.4);
+  cursor: zoom-in;
+}
+
+.player-cover:disabled {
+  cursor: default;
+}
+
+.player-cover:focus-visible {
+  outline: 1px solid var(--line-strong);
+  outline-offset: 2px;
+}
+
+/* COVER LIGHTBOX */
+
+/* The page behind an open lightbox doesn't scroll. */
+html:has(.lightbox[open]) {
+  overflow: hidden;
+}
+
+.lightbox {
+  --lightbox-gap: clamp(2rem, 7vh, 4.5rem);
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: zoom-out;
+}
+
+.lightbox[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.25s ease-out;
+}
+
+.lightbox::backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Real size, scaled down only when it doesn't fit (never up), with a gap at the top and bottom */
+.lightbox-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100svh - 2 * var(--lightbox-gap));
+  border-radius: 0.5rem;
+  box-shadow: 0 0 40px -5px rgba(0, 0, 0, 0.8);
+  cursor: default;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: clamp(1rem, 3vh, 2rem);
+  right: clamp(1rem, 3vw, 2rem);
+  display: flex;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+
+.lightbox-close:hover,
+.lightbox-close:focus-visible {
+  color: var(--text-strong);
+  background-color: var(--row-hover);
+  outline: none;
 }
 
 .player-info {
@@ -952,15 +1144,24 @@ body:has(.player.is-open) .page {
     transition: none;
   }
 
+  .lightbox[open] {
+    animation: none;
+  }
+
   .logo-type path,
   .logo-type polygon {
     animation: none;
     stroke-dashoffset: 0;
   }
 
-  .social-links,
-  .listen-link {
+  .social-links {
     animation: none;
     opacity: 1;
+  }
+
+  .scroll-down {
+    animation: none;
+    transform: translate(-50%, 0);
+    visibility: visible;
   }
 }

@@ -44,10 +44,10 @@ Website for **innerstorm**, the owner's own music. Its main purpose is to offer 
     `Content-Disposition: attachment`. Only `*.mp3` keys inside the section folders are served.
 - After changing bindings in `wrangler.jsonc`, run `npm run cf-typegen` to regenerate
   `worker-configuration.d.ts` (committed, because `tsc -b` needs it in the Cloudflare build).
-- Local dev uses Wrangler's local R2 emulation (`.wrangler/state`). Fill it with:
-  `npx wrangler r2 object put "innerstorm-media/tracks/<file>.mp3" --file <path> --local`.
-  `docs/samples/` holds a few real, tagged MP3s for this. Delete `.wrangler/state/v3/cache` to drop
-  cached lists/tags.
+- Local dev uses Wrangler's local R2 emulation (`.wrangler/state`), not the real bucket.
+  `docs/samples/` mirrors the live bucket (`tracks/`, `mixes/`, `calendar/` with real, tagged MP3s);
+  `npm run seed:local` (`scripts/seed-local-r2.sh`) rebuilds the local bucket from it and clears the
+  local cache. Restart `npm run dev` afterwards.
 
 ## Stack
 
@@ -63,7 +63,8 @@ npm run dev         # Vite dev server; the Worker runs inside it too (/api/track
 npm run build       # type-check (tsc -b: app + worker) + production build into dist/
 npm run preview     # serve the built site + Worker locally
 npm run lint        # oxlint
-npm run cf-typegen  # regenerate worker-configuration.d.ts from wrangler.jsonc / .dev.vars
+npm run cf-typegen  # regenerate worker-configuration.d.ts from wrangler.jsonc
+npm run seed:local  # rebuild the local R2 bucket from docs/samples
 ```
 
 ## Layout
@@ -73,8 +74,12 @@ npm run cf-typegen  # regenerate worker-configuration.d.ts from wrangler.jsonc /
 - `src/player/`: `PlayerProvider` owns the page's single `<audio>` element (queue, next/previous with
   wrap-around, auto-advance, volume, Media Session); components use `usePlayer()` from `context.ts`
 - `src/components/`: `Section`, `Playlist` (rows), `CalendarGrid` (cover cards), `Player` (bottom bar,
-  progress bar, no waveform), `TrackCover`, `TracksStatus`, `LogoType` (animated wordmark), `SocialLinks`
+  progress bar, no waveform; its cover opens `CoverLightbox`), `SectionNav`, `TrackCover`, `TracksStatus`, `LogoType` (animated wordmark), `SocialLinks`
 - `src/hooks/useTracks.ts`: loads `/api/tracks` once; sections filter their part
+- Scrolling: CSS scroll snapping (`mandatory` on desktop, `proximity` on phones) does keys and anchor links.
+  `src/hooks/useWheelPaging.ts` makes one wheel gesture (notch, or trackpad swipe with momentum) move
+  exactly one section; over a scrollable list the wheel only scrolls the list, never the page. `SectionNav` has the dot menu, marks the
+  section in view, and jumps to the URL's `#section` on load.
 - `src/index.css`: all styles, with colour tokens on `:root`
 - `src/assets/`: section backgrounds (`backgrounds/`), social icons
 - `public/`: favicons and `site.webmanifest`

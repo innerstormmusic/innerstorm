@@ -1,4 +1,3 @@
-import { Music } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Section as SectionName } from '../shared/track'
 import calendarBg from './assets/backgrounds/innerstorm.jpeg'
@@ -6,11 +5,13 @@ import aboutBg from './assets/backgrounds/magic1.jpg'
 import homeBg from './assets/backgrounds/poly.jpg'
 import mixesBg from './assets/backgrounds/tom3_1.jpg'
 import tracksBg from './assets/backgrounds/tomtom.jpg'
+import scrollHint from './assets/scroll.gif'
 import CalendarGrid from './components/CalendarGrid'
 import LogoType from './components/LogoType'
 import Player from './components/Player'
 import Playlist from './components/Playlist'
 import Section from './components/Section'
+import SectionNav from './components/SectionNav'
 import SocialLinks from './components/SocialLinks'
 import TracksStatus from './components/TracksStatus'
 import { useTracks, type TracksState } from './hooks/useTracks'
@@ -21,11 +22,13 @@ function sectionTracks(state: TracksState, section: SectionName) {
 }
 
 // Text on the left, the list in a glass panel on the right (stacked on narrow screens).
-function ListSection({ name, background, title, intro, children }: {
+function ListSection({ name, background, title, intro, glass = true, children }: {
   name: SectionName
   background: string
   title: string
   intro: ReactNode
+  // The calendar's cards are glass themselves, so its panel isn't.
+  glass?: boolean
   children: ReactNode
 }) {
   return (
@@ -35,7 +38,7 @@ function ListSection({ name, background, title, intro, children }: {
           <h2 className="section-title">{title}</h2>
           <div className="sidebar-text">{intro}</div>
         </div>
-        <div className="glass section-panel">{children}</div>
+        <div className={`section-panel${glass ? ' glass' : ' section-panel-bare'}`}>{children}</div>
       </div>
     </Section>
   )
@@ -55,9 +58,8 @@ function App() {
             <LogoType />
           </h1>
           <SocialLinks />
-          <a className="listen-link" href="#tracks">
-            <Music size={20} aria-hidden="true" />
-            listen
+          <a className="scroll-down" href="#tracks" aria-label="Scroll down to the tracks">
+            <img src={scrollHint} alt="" width={60} height={60} />
           </a>
         </Section>
 
@@ -124,39 +126,39 @@ function App() {
           {mixes.length > 0 && <Playlist tracks={mixes} />}
         </ListSection>
 
-        <Section name="calendar" background={calendarBg}>
-          <div className="section-layout section-layout-wide">
-            <div className="sidebar">
-              <h2 className="section-title">calendar mixes</h2>
-              <div className="sidebar-text">
-                <p>
-                  The twelve months project began in 2021. The first one was September with some nice breaks tunes,
-                  then the all time favourite, liquid drum and bass, and so on.
-                </p>
-                <p>
-                  Each month I&apos;ve tried to bring a different theme, however while staying in my prefered styles.
-                  One can say it&apos;s a diorama of the music I like.
-                </p>
-                <p>
-                  These mixes are up on{' '}
-                  <a
-                    className="text-link"
-                    href="https://www.youtube.com/watch?v=OHdwKc5hHCY&list=PL2Vmf-tMeSp7L-Ote7g9wkgcaeGOVdLyP"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Youtube
-                  </a>
-                  , so you can enjoy them there too.
-                </p>
-              </div>
-            </div>
-            <div className="calendar-panel">
-              <TracksStatus state={state} empty={calendar.length === 0} />
-              {calendar.length > 0 && <CalendarGrid tracks={calendar} />}
-            </div>
-          </div>
-        </Section>
+        <ListSection
+          name="calendar"
+          background={calendarBg}
+          title="calendar mixes"
+          glass={false}
+          intro={
+            <>
+              <p>
+                The twelve months project began in 2021. The first one was September with some nice breaks tunes,
+                then the all time favourite, liquid drum and bass, and so on.
+              </p>
+              <p>
+                Each month I&apos;ve tried to bring a different theme, however while staying in my prefered styles.
+                One can say it&apos;s a diorama of the music I like.
+              </p>
+              <p>
+                These mixes are up on{' '}
+                <a
+                  className="text-link"
+                  href="https://www.youtube.com/watch?v=OHdwKc5hHCY&list=PL2Vmf-tMeSp7L-Ote7g9wkgcaeGOVdLyP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Youtube
+                </a>
+                , so you can enjoy them there too.
+              </p>
+            </>
+          }
+        >
+          <TracksStatus state={state} empty={calendar.length === 0} />
+          {calendar.length > 0 && <CalendarGrid tracks={calendar} />}
+        </ListSection>
 
         <Section name="about" background={aboutBg}>
           <div className="glass about">
@@ -176,6 +178,7 @@ function App() {
           <SocialLinks />
         </Section>
       </main>
+      <SectionNav />
       <Player />
     </PlayerProvider>
   )

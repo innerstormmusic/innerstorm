@@ -6,12 +6,15 @@ const VOLUME_KEY = 'innerstorm:volume'
 // "Previous" restarts the current track when it's past this point, like most players.
 const RESTART_THRESHOLD_SECONDS = 3
 
+// Full volume is the file's own level (it never goes louder), so that's where the player starts.
+const DEFAULT_VOLUME = 1
+
 function savedVolume(): number {
   try {
     const value = Number(localStorage.getItem(VOLUME_KEY))
-    return value > 0 && value <= 1 ? value : 0.8
+    return value > 0 && value <= 1 ? value : DEFAULT_VOLUME
   } catch {
-    return 0.8
+    return DEFAULT_VOLUME
   }
 }
 

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "cf-typegen": "wrangler types --strict-vars=false"
+    "cf-typegen": "wrangler types --strict-vars=false",
+    "seed:local": "scripts/seed-local-r2.sh"
   },
   "dependencies": {
     "lucide-react": "^1.57.0",

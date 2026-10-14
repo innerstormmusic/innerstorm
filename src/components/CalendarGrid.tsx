@@ -25,7 +25,7 @@ function CalendarGrid({ tracks }: { tracks: Track[] }) {
               <TrackCover track={track} />
               <span className="calendar-card-text" aria-hidden="true">
                 <span className="calendar-card-title">{track.title}</span>
-                {track.genre && <span className="calendar-card-genre">{track.genre}</span>}
+                {/* {track.genre && <span className="calendar-card-genre">{track.genre}</span>} */}
               </span>
               <span className="calendar-card-icon" aria-hidden="true">
                 {isPlaying ? <Pause size={22} /> : <Play size={22} />}

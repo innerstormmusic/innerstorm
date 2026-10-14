@@ -1,7 +1,8 @@
 import { ChevronFirst, ChevronLast, CircleAlert, CloudDownload, LoaderCircle, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { usePlayer } from '../player/context'
 import { formatTime } from '../utils/format'
+import CoverLightbox from './CoverLightbox'
 import TrackCover from './TrackCover'
 
 // The bar fixed to the bottom of the screen. It slides in once a track has been started.
@@ -9,12 +10,21 @@ import TrackCover from './TrackCover'
 function Player() {
   const player = usePlayer()
   const { current, duration, time } = player
+  const [coverOpen, setCoverOpen] = useState(false)
   const progress = duration > 0 ? Math.min(1, time / duration) : 0
   const VolumeIcon = player.volume === 0 ? VolumeX : player.volume < 0.5 ? Volume1 : Volume2
 
   return (
     <div className={`player glass${current ? ' is-open' : ''}`} aria-label="Player" role="region" inert={!current}>
-      <div className="player-cover">{current && <TrackCover track={current} />}</div>
+      <button
+        type="button"
+        className="player-cover"
+        onClick={() => setCoverOpen(true)}
+        disabled={!current?.coverUrl}
+        aria-label="Show the cover"
+      >
+        {current && <TrackCover track={current} />}
+      </button>
 
       <div className="player-info">
         <span className="player-title">{current?.title}</span>
@@ -90,6 +100,7 @@ function Player() {
           </a>
         )}
       </div>
+      <CoverLightbox track={current} open={coverOpen} onClose={() => setCoverOpen(false)} />
     </div>
   )
 }
