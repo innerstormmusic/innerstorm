@@ -7,10 +7,13 @@ Website for **innerstorm**, the owner's own music. Its main purpose is to offer 
 
 ## Hosting & deploys
 
-- Hosted on **Cloudflare Pages**, connected to the GitHub repo.
+- Hosted on **Cloudflare Workers** (static assets), connected to the GitHub repo through Workers Builds.
 - Every push to `main` triggers a build and deploys to music.bertouk.com. So pushing to `main` is a
   production deploy.
-- Cloudflare build settings: build command `npm run build`, output directory `dist`, Node version from `.nvmrc`.
+- Cloudflare build settings: build command `npm run build`, deploy command `npx wrangler deploy`.
+  Node version comes from `.nvmrc`.
+- `wrangler.jsonc` serves `dist/` as static assets, with SPA fallback to `index.html`. The `name` there must
+  match the Worker's name in the dashboard.
 - The site is mostly static. No backend for now.
 
 ## Stack
