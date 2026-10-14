@@ -25,3 +25,13 @@ dist-ssr
 
 # Wrangler
 .wrangler
+
+# Local reference material (private, never committed)
+docs/
+
+# Project-local tool caches/config (keeps tooling from writing outside the repo)
+.local/
+
+# Local Worker secrets
+.dev.vars*
+!.dev.vars.example

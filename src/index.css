@@ -1,20 +1,379 @@
-html, body {
-  margin: 0;
-  height: 100%;
-  background: #000;
-  color: #fff;
+/* Look carried over from the old innerstorm site (docs/old site): black base, Raleway,
+   the poly background, glass panels and the playlist row styling. */
+
+:root {
+  /* Tailwind zinc/slate values the old site used */
+  --text: #e4e4e7;
+  --text-strong: #f4f4f5;
+  --text-soft: #d4d4d8;
+  --text-dim: #a1a1aa;
+  --text-muted: #71717a;
+  --surface-hover: #18181b;
+  --line: #94a3b8;
+  --line-strong: #cbd5e1;
+  --scrollbar: #3f3f46;
+
+  --row-border: rgba(200, 200, 200, 0.15);
+  --row-hover: rgba(200, 200, 200, 0.25);
+
+  --glass-bg: rgba(20, 15, 15, 0.5);
+  --glass-border: rgba(30, 30, 30, 0.5);
+
+  --font-sans: 'Raleway', 'Noto Sans', 'Inter', sans-serif;
+
+  color-scheme: dark;
+  line-height: 1.5;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
+  margin: 0;
+  min-width: 320px;
+  background: #000;
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+/* PAGE + BACKGROUND */
+
+.page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(2rem, 6vw, 4rem);
+  padding: clamp(3rem, 12vh, 8rem) 1rem 2.5rem;
+  box-sizing: border-box;
+}
+
+/* Fixed layers instead of background-attachment: fixed, which iOS ignores. */
+.page::before,
+.page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+.page::before {
+  background: url('./assets/poly.jpg') center / cover no-repeat;
+  filter: saturate(0.5) brightness(0.8) contrast(1.1);
+}
+
+.page::after {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0.7) 100%);
+  box-shadow: inset 0 0 100px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* LOGO */
+
+.hero {
+  margin: 0;
+  line-height: 0;
+}
+
+.logo-type {
+  width: min(80vw, 760px);
+  height: auto;
+  overflow: visible;
+}
+
+.logo-type path,
+.logo-type polygon {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 5;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  /* Draws in left to right: the shapes are stored right to left, 10 in total. */
+  animation: draw-logo 1.6s ease-in-out forwards;
+  animation-delay: calc((9 - var(--i)) * 0.14s + 0.3s);
+}
+
+.logo-type #logo-triangle-top,
+.logo-type #logo-triangle-bottom {
+  stroke: var(--line-strong);
+}
+
+@keyframes draw-logo {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (min-width: 500px) {
+  .logo-type path,
+  .logo-type polygon {
+    stroke-width: 4;
+  }
+}
+
+@media (min-width: 800px) {
+  .logo-type path,
+  .logo-type polygon {
+    stroke-width: 3;
+  }
+}
+
+/* GLASS PANEL */
+
+.glass {
+  border-radius: 0.75rem;
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 0 20px -5px rgba(10, 10, 10, 0.66),
+    inset 0 2px 0 -1px rgba(100, 100, 100, 0.2);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* TRACK LIST */
+
+.tracks {
+  width: 100%;
+  max-width: 860px;
+  box-sizing: border-box;
+  padding: clamp(1rem, 3vw, 2rem);
+  opacity: 0;
+  animation: fade-in 1s ease-in forwards;
+  animation-delay: 1.2s;
+}
+
+.tracks h2 {
+  margin: 0 0 1rem;
+  padding: 0 clamp(0.25rem, 1.5vw, 0.5rem);
+  font-size: clamp(1.5rem, 3vw + 1rem, 2.5rem);
+  font-weight: 200;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  background: linear-gradient(var(--text-strong), var(--text-soft));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tracks-message {
+  margin: 0;
+  padding: 0.5rem clamp(0.25rem, 1.5vw, 0.5rem);
+  color: var(--text-dim);
+}
+
+.track-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.25rem, 1.5vw, 0.5rem);
+  border-bottom: 1px solid var(--row-border);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.125s ease-in-out;
+}
+
+.track-list li:last-child .track {
+  border-bottom: none;
+}
+
+.track:hover,
+.track:focus-visible {
+  border-radius: 0.25rem;
+  background-color: var(--row-hover);
+  outline: none;
+}
+
+/* Hide the divider above a hovered row too (previous-sibling via :has). */
+.track-list li:has(+ li .track:hover) .track,
+.track-list li:has(+ li .track:focus-visible) .track {
+  border-bottom-color: transparent;
+}
+
+.track-index {
+  width: 2rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.track-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.6rem;
+}
+
+.track-title {
+  font-weight: 600;
+}
+
+.track-artist,
+.track-size {
+  font-size: 0.875em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.track-size {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.track-download {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  border-radius: 50%;
+  color: var(--text-muted);
+  transition:
+    color 0.125s ease-in-out,
+    background-color 0.125s ease-in-out;
 }
 
-h1 {
+.track:hover .track-index,
+.track:hover .track-artist,
+.track:hover .track-size {
+  color: var(--text-dim);
+}
+
+.track:hover .track-download,
+.track:focus-visible .track-download {
+  color: var(--text-strong);
+  background-color: var(--surface-hover);
+}
+
+@media (max-width: 799px) {
+  .track-index {
+    display: none;
+  }
+
+  .track-name {
+    flex-direction: column;
+    row-gap: 0.1rem;
+  }
+}
+
+/* SOCIAL LINKS */
+
+.footer {
+  margin-top: auto;
+}
+
+.social-links {
+  list-style: none;
   margin: 0;
-  font-size: clamp(2.5rem, 12vw, 9rem);
-  font-weight: 400;
-  text-align: center;
+  padding: 0;
+  display: flex;
+  gap: 1.5rem;
+  opacity: 0;
+  animation: fade-in 1s ease-in forwards;
+  animation-delay: 2.5s;
+}
+
+.social-link {
+  position: relative;
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+  /* The glow sits on the link because the mask would clip it on the icon itself. */
+  filter: drop-shadow(0 0 0.25rem rgba(143, 163, 166, 0.5));
+  transition: filter 0.3s;
+}
+
+.social-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: var(--line);
+  mask: var(--icon) center / contain no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  transition: background-color 0.3s;
+}
+
+.social-link:hover,
+.social-link:focus-visible {
+  filter: drop-shadow(0 0 0.5rem rgba(150, 150, 150, 0.8));
+}
+
+.social-link:hover .social-icon,
+.social-link:focus-visible .social-icon {
+  background-color: var(--line-strong);
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.5rem;
+  color: var(--text-soft);
+  font-size: 0.875rem;
+  font-weight: 300;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s ease 0.125s;
+}
+
+.social-link:hover .tooltip,
+.social-link:focus-visible .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* SCROLLBAR */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-type path,
+  .logo-type polygon {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .tracks,
+  .social-links {
+    animation: none;
+    opacity: 1;
+  }
 }

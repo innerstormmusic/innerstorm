@@ -3,9 +3,15 @@
   // Must match the Worker's name in the Cloudflare dashboard.
   "name": "innerstorm",
   "compatibility_date": "2026-09-01",
-  // Static site: serve the Vite build output, fall back to index.html for client-side routes.
+  // Only /api/* reaches the Worker; everything else is served from the static assets.
+  "main": "./worker/index.ts",
   "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // The shared Google Drive folder that holds the MP3s ("Anyone with the link" can view).
+    "DRIVE_FOLDER_ID": ""
   }
+  // Secret, set in the Cloudflare dashboard (and in .dev.vars locally): GOOGLE_API_KEY
 }
