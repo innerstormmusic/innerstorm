@@ -18,7 +18,10 @@ export function useTracks(): TracksState {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         return response.json() as Promise<TracksResponse>
       })
-      .then(({ tracks }) => setState({ status: 'ready', tracks }))
+      .then(({ tracks, skipped }) => {
+        for (const file of skipped ?? []) console.warn(`Not shown in the lists: "${file.key}": ${file.reason}`)
+        setState({ status: 'ready', tracks })
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
         console.error('Loading tracks failed:', error)

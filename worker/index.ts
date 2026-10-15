@@ -1,4 +1,4 @@
-import { SECTIONS, type Section, type Track, type TracksResponse } from '../shared/track'
+import { SECTIONS, type Section, type SkippedFile, type Track, type TracksResponse } from '../shared/track'
 import { serveMedia } from './media'
 import { readCover, readTags, type FileTags } from './tags'
 
@@ -67,10 +67,13 @@ async function handleTracks(request: Request, env: Env, ctx: ExecutionContext): 
   if (cached) return cached
 
   try {
-    // Empty files are uploads that haven't finished (or failed); there's nothing to play yet.
-    const objects = (await listBucket(env.MEDIA)).filter(
-      (object) => sectionOf(object.key) && /\.mp3$/i.test(object.key) && object.size > 0,
-    )
+    const objects: R2Object[] = []
+    const skipped: SkippedFile[] = []
+    for (const object of await listBucket(env.MEDIA)) {
+      const reason = skipReason(object)
+      if (reason) skipped.push({ key: object.key, reason })
+      else if (reason === null) objects.push(object)
+    }
     const origin = new URL(request.url).origin
     let complete = true
     const tracks = await Promise.all(
@@ -85,7 +88,7 @@ async function handleTracks(request: Request, env: Env, ctx: ExecutionContext): 
         }
       }),
     )
-    const body: TracksResponse = { tracks: tracks.sort(compareTracks) }
+    const body: TracksResponse = { tracks: tracks.sort(compareTracks), skipped }
     // A list with a failed file is only kept briefly, so the next request tries that file again.
     const edgeSeconds = complete ? LIST_EDGE_CACHE_SECONDS : LIST_RETRY_SECONDS
     const response = Response.json(body, {
@@ -102,6 +105,17 @@ async function handleTracks(request: Request, env: Env, ctx: ExecutionContext): 
       { status: 502, headers: { 'Cache-Control': 'no-store' } },
     )
   }
+}
+
+// Why a bucket object isn't in the lists: a text reason, or undefined for a plain folder marker
+// (an empty "folder/" object, nothing to report). null means it's listed.
+function skipReason(object: R2Object): string | null | undefined {
+  if (object.key.endsWith('/')) return object.size > 0 ? 'a file without a name, inside the folder' : undefined
+  if (!sectionOf(object.key)) return `not inside one of the folders ${SECTIONS.join(', ')}`
+  if (!/\.mp3$/i.test(object.key)) return 'not an .mp3 file'
+  // Usually an upload that hasn't finished, or failed
+  if (object.size === 0) return 'empty file (0 bytes)'
+  return null
 }
 
 async function listBucket(bucket: R2Bucket): Promise<R2Object[]> {
@@ -165,11 +179,16 @@ function toTrack(object: R2Object, tags: FileTags): Track {
   }
 }
 
-// By track number; files without one come after, newest year first, then by title.
+// Tracks are newest year first, mixes oldest year first, both then by title. The calendar goes by
+// track number (January to December). Missing values come last.
 function compareTracks(a: Track, b: Track): number {
+  // Sections are compared first, so the rules below only ever meet two files of the same section.
+  const section = a.section
+  const yearOrder = section === 'tracks' ? -1 : 1
   return (
-    compareNullable(a.trackNo, b.trackNo, (x, y) => x - y) ||
-    compareNullable(a.year, b.year, (x, y) => y - x) ||
+    SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) ||
+    (section === 'calendar' ? compareNullable(a.trackNo, b.trackNo, (x, y) => x - y) : 0) ||
+    compareNullable(a.year, b.year, (x, y) => (x - y) * yearOrder) ||
     a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true })
   )
 }

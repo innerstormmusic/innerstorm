@@ -30,8 +30,9 @@ Website for **innerstorm**, the owner's own music. Its main purpose is to offer 
 - There is no playlist JSON. Everything shown comes from the files' **ID3 tags**, read by the Worker with
   `music-metadata`: title, artist, album, genre, year, track number, embedded cover. Files without a title
   tag fall back to their name, `artist - title.mp3`. The artist "innerstorm" is always shown lowercase.
-- Order within a section: by track number (`TRCK`); files without one come after, newest year first, then
-  by title.
+- Order within a section: tracks newest year first, mixes oldest year first, both then by title; the calendar by track
+  number (`TRCK`). Missing values come last. Files the lists leave out (empty, nameless, not MP3) are sent
+  as `skipped` and logged as warnings in the browser console.
 - The Worker never downloads whole MP3s for this. `worker/tags.ts` reads the 10-byte ID3 header, then only
   the tag plus ~16 KB of audio. Length = audio bytes x 8 / bitrate for CBR files; VBR files use the
   Xing/VBRI header. Parsed tags are cached per file version (R2 etag) in the Cache API, so a file is

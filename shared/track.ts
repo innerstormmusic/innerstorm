@@ -26,6 +26,13 @@ export interface Track {
   coverUrl: string | null
 }
 
+// A file in the bucket that the lists leave out, and why
+export interface SkippedFile {
+  key: string
+  reason: string
+}
+
 export interface TracksResponse {
   tracks: Track[]
+  skipped: SkippedFile[]
 }
