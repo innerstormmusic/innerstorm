@@ -5,6 +5,7 @@ import { readCover, readTags, type FileTags } from './tags'
 // Cloudflare's edge keeps the track list this long before listing the bucket again.
 const LIST_EDGE_CACHE_SECONDS = 300
 const LIST_BROWSER_CACHE_SECONDS = 60
+const LIST_RETRY_SECONDS = 30
 // Tags and covers are cached per file version (etag), so they can be kept for long.
 const TAGS_CACHE_SECONDS = 30 * 24 * 3600
 const COVER_CACHE = 'public, max-age=31536000, immutable'
@@ -66,15 +67,30 @@ async function handleTracks(request: Request, env: Env, ctx: ExecutionContext): 
   if (cached) return cached
 
   try {
-    const objects = (await listBucket(env.MEDIA)).filter((object) => sectionOf(object.key) && /\.mp3$/i.test(object.key))
+    // Empty files are uploads that haven't finished (or failed); there's nothing to play yet.
+    const objects = (await listBucket(env.MEDIA)).filter(
+      (object) => sectionOf(object.key) && /\.mp3$/i.test(object.key) && object.size > 0,
+    )
     const origin = new URL(request.url).origin
+    let complete = true
     const tracks = await Promise.all(
-      objects.map(async (object) => toTrack(object, await cachedTags(env.MEDIA, object, origin, ctx))),
+      objects.map(async (object) => {
+        try {
+          return toTrack(object, await cachedTags(env.MEDIA, object, origin, ctx))
+        } catch (error) {
+          // One unreadable file shouldn't take the whole list down: show it under its file name.
+          console.error(`Reading the tags of ${object.key} failed:`, error)
+          complete = false
+          return toTrack(object, NO_TAGS)
+        }
+      }),
     )
     const body: TracksResponse = { tracks: tracks.sort(compareTracks) }
+    // A list with a failed file is only kept briefly, so the next request tries that file again.
+    const edgeSeconds = complete ? LIST_EDGE_CACHE_SECONDS : LIST_RETRY_SECONDS
     const response = Response.json(body, {
       headers: {
-        'Cache-Control': `public, max-age=${LIST_BROWSER_CACHE_SECONDS}, s-maxage=${LIST_EDGE_CACHE_SECONDS}`,
+        'Cache-Control': `public, max-age=${Math.min(LIST_BROWSER_CACHE_SECONDS, edgeSeconds)}, s-maxage=${edgeSeconds}`,
       },
     })
     ctx.waitUntil(cache.put(cacheKey, response.clone()))
@@ -110,6 +126,17 @@ async function cachedTags(bucket: R2Bucket, object: R2Object, origin: string, ct
   const response = Response.json(tags, { headers: { 'Cache-Control': `public, max-age=${TAGS_CACHE_SECONDS}` } })
   ctx.waitUntil(caches.default.put(cacheKey, response))
   return tags
+}
+
+const NO_TAGS: FileTags = {
+  title: null,
+  artist: null,
+  album: null,
+  genre: null,
+  year: null,
+  trackNo: null,
+  duration: null,
+  hasCover: false,
 }
 
 function toTrack(object: R2Object, tags: FileTags): Track {
